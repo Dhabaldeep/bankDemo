@@ -149,7 +149,8 @@ class seniorAccount extends bankAccount{
 //Main Class
 public class bankDemo {
     public static int count = 0;
-    public static void mainMenu(){
+    static Scanner scan = new Scanner(System.in);
+    public static int mainMenu(){
         System.out.println( "\n :**: MAIN MENU :**: ");
         System.out.println( " 1. Depositions");
         System.out.println( " 2. Withdrawal");
@@ -158,6 +159,7 @@ public class bankDemo {
         System.out.println( " 5. Show Customer Details");
         System.out.println( " 6. EXIT");
         System.out.print( " Enter your option :: ");
+        return scan.nextInt();
     }
     public static void main(String[] args) {
         Calendar cl1 = adultAccount.getTime(1);
@@ -201,8 +203,8 @@ public class bankDemo {
             childrenAccount child = new childrenAccount(name, address, gender,phoneNo);
             int option;
             do {
-                mainMenu();
-                option = scanner.nextInt();
+                
+                option = mainMenu();
                 switch (option) {
                     case 1 -> {
                         System.out.print(" Enter your Deposit amount  :: ");
@@ -247,8 +249,8 @@ public class bankDemo {
             adultAccount adult = new adultAccount(name, address, gender, phoneNo);
             int option;
             do {
-                mainMenu();
-                option = scanner.nextInt();
+                
+                option = bankDemo.mainMenu();
                 switch (option) {
                     case 1 -> {
                         System.out.print(" Enter your Deposit amount  :: ");
@@ -303,8 +305,7 @@ public class bankDemo {
             seniorAccount senior = new seniorAccount(name, address, gender, phoneNo);
             int option;
             do {
-                mainMenu();
-                option = scanner.nextInt();
+                option = bankDemo.mainMenu();
                 switch (option) {
                     case 1 -> {
                         System.out.print(" Enter your amount  :: ");
