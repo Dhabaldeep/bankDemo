@@ -3,14 +3,19 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.sql.*;
 import java.util.*;
+import java.util.Date;
+
 class bankAccount{
     private double balance;
     protected double minimumBalance=1500;
     private String name,address,gender,customerId;
-    protected String countryCode="+91 ";
+    protected String countryCode="+91";
     private long phoneNo;
     private int age;
+    protected boolean loginStatus = false;
+    protected String accountType = null;
     private final double B_R_I;
     {
         B_R_I = 3.5;
@@ -50,21 +55,21 @@ class bankAccount{
         return gender;
     }
     protected void setGender(String gender){
-        if(Objects.equals(gender, "M")||Objects.equals(gender, "m")){
+        if(Objects.equals(gender, "M")||Objects.equals(gender, "m") ||Objects.equals(gender, "Male")){
             this.gender="Male";
         }
-        else if(Objects.equals(gender, "F")||Objects.equals(gender, "f")){
+        else if(Objects.equals(gender, "F")||Objects.equals(gender, "f")|| Objects.equals(gender, "Female")){
             this.gender="Female";
         }
-        else if(Objects.equals(gender, "O")||Objects.equals(gender, "o")){
+        else if(Objects.equals(gender, "O")||Objects.equals(gender, "o")|| Objects.equals(gender, "Other")){
             this.gender="Other";
         }
         else{
             this.gender="Invalid";
         }
     }
-    protected long getPhoneNo(){
-        return phoneNo;
+    protected String getPhoneNo(){
+        return countryCode+" "+phoneNo;
     }
     protected void setPhoneNo(long phoneNo){
         this.phoneNo = phoneNo;
@@ -86,13 +91,27 @@ class bankAccount{
         }
         return type+s;
     }
+    static public void setDatabaseData(Double balance, String customerId){
+        try {
+            Class.forName("oracle.jdbc.driver.OracleDriver");
+            Connection connection = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521:xe", "system", "********");
+            Statement statement = connection.createStatement();
+            int count = statement.executeUpdate("update accountdetails set balance = '"+balance+"'where customerid = '"+customerId+"'");
+            if (count >= 0) System.out.println(" Balance Updated.");
+            else System.out.println(" No Record found..");
+        }
+        catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
     //    deposit method
-    protected double deposit(double balance){
+    protected double deposit(double balance,String id){
         this.balance = this.balance+balance;
+        setDatabaseData(this.balance,id);
         return this.balance;
     }
     //     withdrawal method
-    protected double withdrawal(double balance, double accountBalance){
+    protected double withdrawal(double balance, double accountBalance, String id){
         double availableBalance = this.balance-balance;
         if(balance<accountBalance){
             if (availableBalance<=minimumBalance && balance>availableBalance){
@@ -100,6 +119,7 @@ class bankAccount{
             }
             else{
                 this.balance = this.balance-balance;
+                setDatabaseData(this.balance,id);
             }
         }
         else{
@@ -116,7 +136,7 @@ class bankAccount{
         System.out.print( "\n Name:: "+getName());
         System.out.print( "\n Name:: "+getAge());
         System.out.print( "\n Gender :: "+getGender() );
-        System.out.print( "\n Phone No :: "+countryCode+getPhoneNo());
+        System.out.print( "\n Phone No :: "+getPhoneNo());
         System.out.print( "\n Address :: "+getAddress()+"\n");
     }
     //      Display and store the Account Holder Details
@@ -134,7 +154,7 @@ class bankAccount{
             printWriter.println("\nAccount Holder Details\n" + "Account Type : "
                     + accountType + "\nCustomer I'd : "+getCustomerId()+"\nName : "
                     + getName() + "\nAge : " + getAge() + "\nGender : " + getGender() + "\nPhone No : "
-                    +countryCode+ getPhoneNo() + "\nAddress : " + getAddress() + "\nAccount Balance : "
+                    +getPhoneNo() + "\nAddress : " + getAddress() + "\nAccount Balance : "
                     + getBalance()+"\n"+date+"\n------------------------------");
             System.out.println(" Your Account Details is successfully store into " + str);
             printWriter.flush();
@@ -153,6 +173,13 @@ class bankAccount{
     public double interestCalculator(double E_R_I, double balance, int time){
         return (balance*E_R_I*time)/100+balance;
     }
+    static public String getUserIdPassword(String userId){
+        Scanner scan = new Scanner(System.in);
+        System.out.println("*** Create Account ***");
+        System.out.println(" Your User id is :: "+userId);
+        System.out.print(" Enter Your Password : ");
+        return scan.nextLine();
+    }
 }
 
 //Children Account Class
@@ -160,8 +187,22 @@ class childrenAccount extends bankAccount{
     double E_R_I = getB_R_I()+0.05;
     int time=1;
     childrenAccount(){
-        deposit(1000);
         setCustomerId(generateId("C"));
+        String customerId = getCustomerId();
+        String password =getUserIdPassword(customerId);
+        deposit(1000,customerId);
+        Date date = new Date();
+        try {
+            boolean yes = JDBC_adminInsert.adminDataInsert(customerId,password, String.valueOf(date));
+            if(yes) System.out.println(" Successfully account created.");
+            else System.out.println(" Try later.");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    childrenAccount(Boolean status,String type){
+        loginStatus = status;
+        accountType = type;
     }
 }
 
@@ -170,8 +211,22 @@ class adultAccount extends bankAccount{
     double E_R_I = getB_R_I()+0.03;
     int time=1;
     adultAccount(){
-        deposit(500);
         setCustomerId(generateId("A"));
+        String customerId=getCustomerId();
+        String password=getUserIdPassword(customerId);
+        deposit(500,customerId);
+        Date date = new Date();
+        try{
+            boolean yes = JDBC_adminInsert.adminDataInsert(customerId,password, String.valueOf(date));
+            if(yes) System.out.println(" Successfully account created.");
+            else System.out.println(" Try Later.");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    adultAccount(Boolean status,String type){
+        loginStatus = status;
+        accountType = type;
     }
     public static Calendar getTime(int add) {
         Calendar cal = Calendar.getInstance();
@@ -184,8 +239,22 @@ class seniorAccount extends bankAccount{
     double E_R_I = getB_R_I()+1.0;
     int time=1;
     seniorAccount(){
-        deposit(2000);
         setCustomerId(generateId("S"));
+        String customerId = getCustomerId();
+        String password = getUserIdPassword(customerId);
+        deposit(2000,customerId);
+        Date date = new Date();
+        try{
+            boolean yes = JDBC_adminInsert.adminDataInsert(customerId,password, String.valueOf(date));
+            if(yes) System.out.println(" Successfully account created.");
+            else System.out.println(" Try Later.");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    seniorAccount(Boolean status,String type){
+        loginStatus = status;
+        accountType = type;
     }
 }
 
@@ -281,7 +350,10 @@ public class bankDemo extends displayAcceptBankDetails {
     private static final int aLimit=5;
     private static final int sLimit=10;
     private static final String duration = "Minute";
+
     public static void main(String[] args) {
+
+
         Calendar cl1 = adultAccount.getTime(1);
         Scanner scanner2 = new Scanner(System.in);
         int chooseOption;
@@ -302,18 +374,26 @@ public class bankDemo extends displayAcceptBankDetails {
 
                             case 1 -> {
 //                                Children Account
+                                childrenAccount child = new childrenAccount();
                                 String name = getName();
                                 int age = getAge();
                                 if(age<= 18) {
                                     String gender = getGender();
                                     long phoneNo = getPhoneNo();
                                     String address = getAddress();
-                                    childrenAccount child = new childrenAccount();
                                     child.setName(name);
                                     child.setAddress(address);
                                     child.setAge(age);
                                     child.setGender(gender);
                                     child.setPhoneNo(phoneNo);
+                                    try {
+                                        Date date = new Date();
+                                        boolean success = JDBC_Insert.dataInsert("Children",child.getCustomerId(), child.getName(), child.getAge(), child.getGender(), child.getPhoneNo(), child.getAddress(), child.getBalance(), String.valueOf(date));
+                                        if(success) System.out.println("Data Entered Successfully.");
+                                        else System.out.println("Something went wrong.");
+                                    } catch (Exception e) {
+                                        throw new RuntimeException(e);
+                                    }
                                     int option;
                                     do {
                                         mainMenu();
@@ -323,7 +403,8 @@ public class bankDemo extends displayAcceptBankDetails {
                                                 System.out.print(" Enter your Deposit amount  :: ");
                                                 try {
                                                     double depositAmount = scanner.nextDouble();
-                                                    child.setBalance(child.deposit(depositAmount));
+                                                    child.setBalance(child.deposit(depositAmount,child.getCustomerId()));
+//                                                        setDatabaseData(child.getBalance(),child.getCustomerId());
                                                 } catch (InputMismatchException e) {
                                                     System.out.println(" Amount must be a numeric value.");
                                                     return;
@@ -334,12 +415,14 @@ public class bankDemo extends displayAcceptBankDetails {
                                                 if (cl.equals(cl1) || (cl.after(cl1))) {
                                                     count = 0;
                                                     cl1 = adultAccount.getTime(1);
+
                                                 }
                                                 if (count < cLimit) {
                                                     System.out.print(" Enter your Withdrawal amount  :: ");
                                                     try {
                                                         double withdrawalAmount = scanner.nextDouble();
-                                                        child.setBalance(child.withdrawal(withdrawalAmount, child.getBalance()));
+                                                        child.setBalance(child.withdrawal(withdrawalAmount, child.getBalance(),child.getCustomerId()));
+//                                                            setDatabaseData(child.getBalance(),child.getCustomerId());
                                                         count++;
                                                     } catch (InputMismatchException e) {
                                                         System.out.println(" Amount must be a numeric value.");
@@ -373,6 +456,7 @@ public class bankDemo extends displayAcceptBankDetails {
 
                             case 2 -> {
 //                                AdultAccount
+                                adultAccount adult = new adultAccount();
                                 String name = getName();
                                 int age = getAge();
                                 if(age<= 18) {
@@ -382,13 +466,19 @@ public class bankDemo extends displayAcceptBankDetails {
                                     String gender = getGender();
                                     long phoneNo = getPhoneNo();
                                     String address = getAddress();
-
-                                    adultAccount adult = new adultAccount();
                                     adult.setName(name);
                                     adult.setAddress(address);
                                     adult.setAge(age);
                                     adult.setGender(gender);
                                     adult.setPhoneNo(phoneNo);
+                                    try {
+                                        Date date = new Date();
+                                        boolean success = JDBC_Insert.dataInsert("Adult",adult.getCustomerId(), adult.getName(), adult.getAge(), adult.getGender(), adult.getPhoneNo(), adult.getAddress(), adult.getBalance(), String.valueOf(date));
+                                        if(success) System.out.println("Data Entered Successfully.");
+                                        else System.out.println("Something went wrong.");
+                                    } catch (Exception e) {
+                                        throw new RuntimeException(e);
+                                    }
                                     int option;
                                     do {
                                         mainMenu();
@@ -398,7 +488,8 @@ public class bankDemo extends displayAcceptBankDetails {
                                                 System.out.print(" Enter your Deposit amount  :: ");
                                                 try {
                                                     double depositAmount = scanner.nextDouble();
-                                                    adult.setBalance(adult.deposit(depositAmount));
+                                                    adult.setBalance(adult.deposit(depositAmount,adult.getCustomerId()));
+//                                                        setDatabaseData(adult.getBalance(),adult.getCustomerId());
                                                 } catch (InputMismatchException e) {
                                                     System.out.println(" Amount must be a numeric value.");
                                                     return;
@@ -414,7 +505,8 @@ public class bankDemo extends displayAcceptBankDetails {
                                                     System.out.print(" Enter your Withdrawal amount  :: ");
                                                     try {
                                                         double withdrawalAmount = scanner.nextDouble();
-                                                        adult.setBalance(adult.withdrawal(withdrawalAmount, adult.getBalance()));
+                                                        adult.setBalance(adult.withdrawal(withdrawalAmount, adult.getBalance(),adult.getCustomerId()));
+//                                                            setDatabaseData(adult.getBalance(),adult.getCustomerId());
                                                         count++;
                                                     } catch (InputMismatchException e) {
                                                         System.out.println(" Amount must be a numeric value.");
@@ -449,6 +541,7 @@ public class bankDemo extends displayAcceptBankDetails {
 
                             case 3 -> {
 //                                SeniorCitizenAc
+                                seniorAccount senior = new seniorAccount();
                                 String name = getName();
                                 int age = getAge();
                                 if(age<=60) {
@@ -458,13 +551,19 @@ public class bankDemo extends displayAcceptBankDetails {
                                     String gender = getGender();
                                     long phoneNo = getPhoneNo();
                                     String address = getAddress();
-
-                                    seniorAccount senior = new seniorAccount();
                                     senior.setName(name);
                                     senior.setAddress(address);
                                     senior.setAge(age);
                                     senior.setGender(gender);
                                     senior.setPhoneNo(phoneNo);
+                                    try {
+                                        Date date = new Date();
+                                        boolean success = JDBC_Insert.dataInsert("Senior Citizen",senior.getCustomerId(), senior.getName(), senior.getAge(), senior.getGender(), senior.getPhoneNo(), senior.getAddress(), senior.getBalance(), String.valueOf(date));
+                                        if(success) System.out.println("Data Entered Successfully.");
+                                        else System.out.println("Something went wrong.");
+                                    } catch (Exception e) {
+                                        throw new RuntimeException(e);
+                                    }
                                     int option;
                                     do {
                                         mainMenu();
@@ -474,7 +573,8 @@ public class bankDemo extends displayAcceptBankDetails {
                                                 System.out.print(" Enter your amount  :: ");
                                                 try {
                                                     double depositAmount = scanner.nextInt();
-                                                    senior.setBalance(senior.deposit(depositAmount));
+                                                    senior.setBalance(senior.deposit(depositAmount,senior.getCustomerId()));
+//                                                        setDatabaseData(senior.getBalance(),senior.getCustomerId());
                                                 } catch (InputMismatchException e) {
                                                     System.out.println(" Amount must be a numeric value.");
                                                     return;
@@ -490,7 +590,8 @@ public class bankDemo extends displayAcceptBankDetails {
                                                     System.out.print(" Enter your Withdrawal amount  :: ");
                                                     try {
                                                         double withdrawalAmount = scanner.nextDouble();
-                                                        senior.setBalance(senior.withdrawal(withdrawalAmount, senior.getBalance()));
+                                                        senior.setBalance(senior.withdrawal(withdrawalAmount, senior.getBalance(),senior.getCustomerId()));
+//                                                            setDatabaseData(senior.getBalance(),senior.getCustomerId());
                                                         count++;
                                                     } catch (InputMismatchException e) {
                                                         System.out.println(" Amount must be a numeric value.");
@@ -525,7 +626,267 @@ public class bankDemo extends displayAcceptBankDetails {
                         }
                     } while (true);
                 }
-                case 2 -> System.out.println(" There is nothing there.. i am updated soon.");
+                case 2 -> {
+//                    System.out.println(" There is nothing there. I am updated soon.");
+                    Scanner scanner6 = new Scanner(System.in);
+                    System.out.print(" Enter the Username : ");
+                    String username = scanner6.nextLine();
+                    System.out.print(" Enter the Password :: ");
+                    String password = scanner6.nextLine();
+                    try {
+                        Class.forName("oracle.jdbc.driver.OracleDriver");
+                        Connection connection = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521:xe", "system", "********");
+                        Statement statement = connection.createStatement();
+                        ResultSet rs = statement.executeQuery("select * from account where customerid ='"+username+"'");
+
+                        String customer_Id = null;
+                        String getPassword = null;
+                        while(rs.next()){
+                            customer_Id = rs.getString(1);
+                            getPassword = rs.getString(2);
+                        }
+                        if(customer_Id != null) {
+                            if (password.equals(getPassword)) {
+                                try {
+                                    ResultSet resultSet = statement.executeQuery("select * from accountdetails where customerid ='" + username + "'");
+                                    String id = null;
+                                    String accountType = null;
+                                    String name = null;
+                                    int age = 0;
+                                    String gender = null;
+                                    String phone_No = null;
+                                    String address = null;
+                                    double balance = 0.0;
+                                    while (resultSet.next()) {
+                                        accountType = resultSet.getString(1);
+                                        id = resultSet.getString(2);
+                                        name = resultSet.getString(3);
+                                        age = resultSet.getInt(4);
+                                        gender = resultSet.getString(5);
+                                        phone_No = resultSet.getString(6);
+                                        address= resultSet.getString(7);
+                                        balance = resultSet.getInt(8);
+                                    }
+                                    System.out.println(" Welcome " + name);
+                                    System.out.println(" Welcome " + phone_No);
+                                    System.out.println(" Welcome " + gender);
+
+//                                    children Account
+                                    if(age<= 18) {
+                                        childrenAccount child = new childrenAccount(true,accountType);
+                                        child.setCustomerId(id);
+                                        child.setName(name);
+                                        child.setAddress(address);
+                                        child.setAge(age);
+                                        child.setGender(gender);
+                                        child.setBalance(balance);
+                                        if (phone_No != null) {
+                                            child.setPhoneNo(Long.parseLong(phone_No.split(" ")[1]));
+                                        }
+                                        int option;
+                                        do {
+                                            mainMenu();
+                                            option = scanner.nextInt();
+                                            switch (option) {
+                                                case 1 -> {
+                                                    System.out.print(" Enter your Deposit amount  :: ");
+                                                    try {
+                                                        double depositAmount = scanner.nextDouble();
+                                                        child.setBalance(child.deposit(depositAmount,child.getCustomerId()));
+//                                                        setDatabaseData(child.getBalance(),child.getCustomerId());
+                                                    } catch (InputMismatchException e) {
+                                                        System.out.println(" Amount must be a numeric value.");
+                                                        return;
+                                                    }
+                                                }
+                                                case 2 -> {
+                                                    Calendar cl = adultAccount.getTime(0);
+                                                    if (cl.equals(cl1) || (cl.after(cl1))) {
+                                                        count = 0;
+                                                        cl1 = adultAccount.getTime(1);
+
+                                                    }
+                                                    if (count < cLimit) {
+                                                        System.out.print(" Enter your Withdrawal amount  :: ");
+                                                        try {
+                                                            double withdrawalAmount = scanner.nextDouble();
+                                                            child.setBalance(child.withdrawal(withdrawalAmount, child.getBalance(),child.getCustomerId()));
+//                                                            setDatabaseData(child.getBalance(),child.getCustomerId());
+                                                            count++;
+                                                        } catch (InputMismatchException e) {
+                                                            System.out.println(" Amount must be a numeric value.");
+                                                            return;
+                                                        }
+                                                    } else {
+                                                        System.out.println(" Withdrawal Cancel. You reached Your daily transaction limit... Try after "+1+" " +duration+" later.");
+                                                    }
+                                                }
+                                                case 3 -> System.out.print(" The total amount of " + child.E_R_I + " % Interest in " + child.time + " year is :: " + child.interestCalculator(child.E_R_I, child.getBalance(), child.time) + "\n");
+                                                case 4 -> child.display(child.getBalance());
+                                                case 5 -> child.showMyDetails();
+                                                case 6 -> {
+                                                    try {
+                                                        child.storeDetails("Children");
+                                                    } catch (IOException e) {
+                                                        System.out.println(" " + e);
+                                                    }
+                                                    return;
+                                                }
+                                                default -> System.out.println("Choose Correct Option.");
+                                            }
+                                        } while (true);
+                                    }
+
+                                    /* ******* Create the Adult Account ******** */
+
+                                    else if(age<=60) {
+//                                    AdultAccount
+                                        adultAccount adult = new adultAccount(true,accountType);
+                                        adult.setCustomerId(id);
+                                        adult.setName(name);
+                                        adult.setAddress(address);
+                                        adult.setAge(age);
+                                        adult.setGender(gender);
+                                        adult.setBalance(balance);
+                                        if (phone_No != null) {
+                                            adult.setPhoneNo(Long.parseLong(phone_No.split(" ")[1]));
+                                        }
+                                        int option;
+                                        do {
+                                            mainMenu();
+                                            option = scanner.nextInt();
+                                            switch (option) {
+                                                case 1 -> {
+                                                    System.out.print(" Enter your Deposit amount  :: ");
+                                                    try {
+                                                        double depositAmount = scanner.nextDouble();
+                                                        adult.setBalance(adult.deposit(depositAmount,adult.getCustomerId()));
+//                                                        setDatabaseData(adult.getBalance(),adult.getCustomerId());
+                                                    } catch (InputMismatchException e) {
+                                                        System.out.println(" Amount must be a numeric value.");
+                                                        return;
+                                                    }
+                                                }
+                                                case 2 -> {
+                                                    Calendar cl = adultAccount.getTime(0);
+                                                    if (cl.equals(cl1) || (cl.after(cl1))) {
+                                                        count = 0;
+                                                        cl1 = adultAccount.getTime(1);
+                                                    }
+                                                    if (count < aLimit) {
+                                                        System.out.print(" Enter your Withdrawal amount  :: ");
+                                                        try {
+                                                            double withdrawalAmount = scanner.nextDouble();
+                                                            adult.setBalance(adult.withdrawal(withdrawalAmount, adult.getBalance(),adult.getCustomerId()));
+//                                                            setDatabaseData(adult.getBalance(),adult.getCustomerId());
+                                                            count++;
+                                                        } catch (InputMismatchException e) {
+                                                            System.out.println(" Amount must be a numeric value.");
+                                                            return;
+                                                        }
+                                                    } else {
+                                                        System.out.println(" Withdrawal Cancel. You reached Your daily transaction limit... Try after "+1+" " +duration+" later.");
+                                                    }
+                                                }
+                                                case 3 -> System.out.print(" The total amount of " + adult.E_R_I + " % Interest in " + adult.time + " year is :: " + adult.interestCalculator(adult.E_R_I, adult.getBalance(), adult.time) + "\n");
+                                                case 4 -> adult.display(adult.getBalance());
+                                                case 5 -> adult.showMyDetails();
+                                                case 6 -> {
+                                                    try {
+                                                        adult.storeDetails("Adult");
+                                                    } catch (IOException e) {
+                                                        System.out.println(" " + e);
+                                                    }
+                                                    return;
+                                                }
+                                                default -> System.out.println("Choose Correct Option.");
+                                            }
+                                        } while (true);
+                                    }
+
+                                    /* ******* Create the Senior Citizen Account ******** */
+
+                                    else if(age<=120) {
+//                                      SeniorCitizenAc
+                                        seniorAccount senior = new seniorAccount(true,accountType);
+                                        senior.setCustomerId(id);
+                                        senior.setName(name);
+                                        senior.setAddress(address);
+                                        senior.setAge(age);
+                                        senior.setGender(gender);
+                                        senior.setBalance(balance);
+                                        if (phone_No != null) {
+                                            senior.setPhoneNo(Long.parseLong(phone_No.split(" ")[1]));
+                                        }
+                                        int option;
+                                        do {
+                                            mainMenu();
+                                            option = scanner.nextInt();
+                                            switch (option) {
+                                                case 1 -> {
+                                                    System.out.print(" Enter your amount  :: ");
+                                                    try {
+                                                        double depositAmount = scanner.nextInt();
+                                                        senior.setBalance(senior.deposit(depositAmount,senior.getCustomerId()));
+//                                                        setDatabaseData(senior.getBalance(),senior.getCustomerId());
+                                                    } catch (InputMismatchException e) {
+                                                        System.out.println(" Amount must be a numeric value.");
+                                                        return;
+                                                    }
+                                                }
+                                                case 2 -> {
+                                                    Calendar cl = adultAccount.getTime(0);
+                                                    if (cl.equals(cl1) || (cl.after(cl1))) {
+                                                        count = 0;
+                                                        cl1 = adultAccount.getTime(1);
+                                                    }
+                                                    if (count < sLimit) {
+                                                        System.out.print(" Enter your Withdrawal amount  :: ");
+                                                        try {
+                                                            double withdrawalAmount = scanner.nextDouble();
+                                                            senior.setBalance(senior.withdrawal(withdrawalAmount, senior.getBalance(),senior.getCustomerId()));
+//                                                            setDatabaseData(senior.getBalance(),senior.getCustomerId());
+                                                            count++;
+                                                        } catch (InputMismatchException e) {
+                                                            System.out.println(" Amount must be a numeric value.");
+                                                            return;
+                                                        }
+                                                    } else {
+                                                        System.out.println(" Withdrawal Cancel. You reached Your daily transaction limit... Try after "+1+" " +duration+" later.");
+                                                    }
+                                                }
+                                                case 3 ->
+                                                    //System.out.print(" The Current Balance is :: "+senior.balance+"\n");
+                                                        System.out.print(" The total amount of " + senior.E_R_I + " % Interest in " + senior.time + " year is :: " + senior.interestCalculator(senior.E_R_I, senior.getBalance(), senior.time) + "\n");
+                                                case 4 -> senior.display(senior.getBalance());
+                                                case 5 -> senior.showMyDetails();
+                                                case 6 -> {
+                                                    try {
+                                                        senior.storeDetails("Senior");
+                                                    } catch (IOException io) {
+                                                        System.out.println(" " + io);
+                                                    }
+                                                    return;
+                                                }
+                                                default -> System.out.println("Choose Correct Option.");
+                                            }
+                                        } while (true);
+                                    }
+                                    else{
+                                        System.out.println(" Something went wrong.");
+                                    }
+
+                                }catch (Exception e) {
+                                    System.out.println(e.getMessage());
+                                }
+                            }
+                            else System.out.println(" Invalid  Username or password.");
+                        }
+                        else System.out.println(" Invalid  Username or password.");
+                    }catch (Exception e) {
+                        System.out.println(e.getMessage());
+                    }
+                }
                 case 3 -> {
                     return;
                 }
